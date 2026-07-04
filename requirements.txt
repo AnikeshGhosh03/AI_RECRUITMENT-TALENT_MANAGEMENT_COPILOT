@@ -1,0 +1,8 @@
+streamlit
+pymupdf
+python-docx
+sqlalchemy
+pymysql
+pydantic
+openai
+python-dotenv
