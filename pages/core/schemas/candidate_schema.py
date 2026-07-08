@@ -7,6 +7,8 @@ class ContactInfo(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     linkedin: Optional[str] = None
+    github: Optional[str] = None
+    portfolio: Optional[str] = None
 
 
 class CandidateProfile(BaseModel):
@@ -17,5 +19,6 @@ class CandidateProfile(BaseModel):
     work_experience: List[Dict[str, str]] = Field(default_factory=list)
     certifications: List[str] = Field(default_factory=list)
     projects: List[Dict[str, str]] = Field(default_factory=list)
+    additional_sections: Dict[str, List[str]] = Field(default_factory=dict)  # Dynamic sections
     source_file: str = ""
     raw_text: str = ""
