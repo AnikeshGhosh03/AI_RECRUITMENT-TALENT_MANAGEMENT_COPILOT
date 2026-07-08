@@ -1,5 +1,14 @@
 import streamlit as st
 
+# Apply the app theme and sidebar behavior before other Streamlit UI renders so
+# page transitions do not briefly show the default Streamlit shell.
+st.set_option("client.showSidebarNavigation", False)
+st.set_option("theme.primaryColor", "#1373d1")
+st.set_option("theme.backgroundColor", "#f3f6fa")
+st.set_option("theme.secondaryBackgroundColor", "#ffffff")
+st.set_option("theme.textColor", "#1d2a39")
+st.set_option("theme.font", "sans serif")
+
 
 NAV_ITEMS = [
     ("app.py", "Dashboard", ":material/dashboard:"),
