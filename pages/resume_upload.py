@@ -1,3 +1,4 @@
+import html
 import json
 
 import streamlit as st
@@ -16,39 +17,42 @@ UPLOAD_CLOUD_ICON = """
 FILE_TEXT_ICON = """
 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
-  <path d="M14 2v6h6"/>
-  <path d="M8 13h8"/>
-  <path d="M8 17h5"/>
+  <path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
 </svg>
 """
 
 UPLOAD_FILE_ICON = """
 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-  <path d="M17 8 12 3 7 8"/>
-  <path d="M12 3v12"/>
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8 12 3 7 8"/><path d="M12 3v12"/>
 </svg>
 """
 
 PROGRESS_ICON = """
 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M3 3v18h18"/>
-  <path d="m19 9-5 5-4-4-4 4"/>
+  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/>
 </svg>
 """
 
 USERS_ICON = """
 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-  <circle cx="9" cy="7" r="4"/>
-  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
 </svg>
 """
 
 st.set_page_config(page_title="Resume Upload", page_icon="📄", layout="wide")
 apply_global_style()
 
+def _safe(value: object, fallback: str = "—") -> str:
+    text = str(value or "").strip()
+    return html.escape(text) if text else fallback
+
+
+def _safe_link(url: str | None) -> str:
+    if not url:
+        return "—"
+    safe_url = html.escape(url, quote=True)
+    safe_label = html.escape(url)
+    return f"<a href='{safe_url}' target='_blank' rel='noopener noreferrer'>{safe_label}</a>"
 
 def _render_profile_sections(profile: dict) -> None:
     education = profile.get("education", [])
@@ -56,6 +60,49 @@ def _render_profile_sections(profile: dict) -> None:
     certifications = profile.get("certifications", [])
     projects = profile.get("projects", [])
 
+    st.markdown("#### Structured Candidate Profile")
+    section_columns = st.columns(2)
+
+    with section_columns[0]:
+        with st.expander("🎓 Education", expanded=True):
+            if education:
+                for item in education:
+                    degree = _safe(item.get("degree"), "Degree not detected")
+                    institution = _safe(item.get("institution"), "Institution not detected")
+                    year = _safe(item.get("year"), "")
+                    st.markdown(f"**{degree}**")
+                    st.caption(" • ".join(part for part in [institution, year] if part))
+            else:
+                st.write("No education information extracted.")
+
+        with st.expander("🏅 Certifications", expanded=True):
+            if certifications:
+                for certification in certifications:
+                    st.write(f"• {certification}")
+            else:
+                st.write("No certifications extracted.")
+
+    with section_columns[1]:
+        with st.expander("💼 Work Experience", expanded=True):
+            if experience:
+                for item in experience:
+                    title = _safe(item.get("title"), "Role not detected")
+                    company = _safe(item.get("company"), "Company not detected")
+                    duration = _safe(item.get("duration"), "")
+                    st.markdown(f"**{title}**")
+                    st.caption(" • ".join(part for part in [company, duration] if part))
+            else:
+                st.write("No work experience extracted.")
+
+        with st.expander("🚀 Projects", expanded=True):
+            if projects:
+                for item in projects:
+                    name = _safe(item.get("name"), "Project not detected")
+                    description = _safe(item.get("description"), "No description extracted.")
+                    st.markdown(f"**{name}**")
+                    st.caption(description)
+            else:
+                st.write("No project information extracted.")
 
 def _profile_model_to_dict(item) -> dict:
     return {
@@ -90,49 +137,7 @@ def _refresh_candidate_state() -> list:
     st.session_state["candidate_profiles"] = profiles
     return profiles
 
-    st.markdown("#### Structured Candidate Profile")
-    section_columns = st.columns(2)
-
-    with section_columns[0]:
-        with st.expander("🎓 Education", expanded=True):
-            if education:
-                for item in education:
-                    degree = item.get("degree") or "Degree not detected"
-                    institution = item.get("institution") or "Institution not detected"
-                    year = item.get("year") or ""
-                    st.write(f"**{degree}**")
-                    st.caption(" • ".join(part for part in [institution, year] if part))
-            else:
-                st.write("No education information extracted.")
-
-        with st.expander("🏅 Certifications", expanded=True):
-            if certifications:
-                for certification in certifications:
-                    st.write(f"• {certification}")
-            else:
-                st.write("No certifications extracted.")
-
-    with section_columns[1]:
-        with st.expander("💼 Work Experience", expanded=True):
-            if experience:
-                for item in experience:
-                    title = item.get("title") or "Role not detected"
-                    company = item.get("company") or "Company not detected"
-                    duration = item.get("duration") or ""
-                    st.write(f"**{title}**")
-                    st.caption(" • ".join(part for part in [company, duration] if part))
-            else:
-                st.write("No work experience extracted.")
-
-        with st.expander("🚀 Projects", expanded=True):
-            if projects:
-                for item in projects:
-                    name = item.get("name") or "Project not detected"
-                    description = item.get("description") or "No description extracted."
-                    st.write(f"**{name}**")
-                    st.caption(description)
-            else:
-                st.write("No project information extracted.")
+    
 
 render_navbar()
 
@@ -142,7 +147,7 @@ st.markdown(
     <div class="topbar">
       <div class="title">
         <h1>Resume Parsing & Candidate Profiling</h1>
-        <p>Upload PDF/DOCX resumes, extract key candidate details, and save structured profiles for AI recruitment analysis.</p>
+        <p>Upload polished PDF/DOCX resumes, watch the parser sync in real time, and save structured profiles for AI recruitment analysis.</p>
       </div>
       <div class="badge">Milestone 1</div>
     </div>
@@ -151,7 +156,6 @@ st.markdown(
 )
 
 left, right = st.columns([1, 1], gap="large")
-uploaded_file = None
 profiles = st.session_state.get("candidate_profiles")
 if profiles is None:
     profiles = _refresh_candidate_state()
@@ -167,8 +171,8 @@ with left:
         f"""
         <div class="dropzone">
           <div class="upload-icon">{UPLOAD_CLOUD_ICON}</div>
-          <b>Drag and drop a resume or click browse</b><br>
-          <small>Supported formats: PDF, DOCX</small>
+          <b>Drag, drop, and transform resumes into profiles</b><br>
+          <small>Fully responsive upload panel • PDF and DOCX supported</small>
         </div>
         """,
         unsafe_allow_html=True,
@@ -176,8 +180,9 @@ with left:
     uploaded_file = st.file_uploader("Upload Files", type=["pdf", "docx"], label_visibility="collapsed")
     if uploaded_file is not None:
         file_size = uploaded_file.size / (1024 * 1024)
+        safe_uploaded_name = html.escape(uploaded_file.name)
         st.markdown(
-            f"<div class='file-pill'><span class='file-icon'>{FILE_TEXT_ICON}</span><div><b>{uploaded_file.name}</b><br><small>Ready to parse • {file_size:.2f} MB</small></div></div>",
+            f"<div class='file-pill'><span class='file-icon'>{FILE_TEXT_ICON}</span><div class='file-details'><b title='{safe_uploaded_name}'>{safe_uploaded_name}</b><br><small>Ready to parse • {file_size:.2f} MB</small></div></div>",
             unsafe_allow_html=True,
         )
         if st.button("Parse Resume & Save Profile", type="primary", width="stretch"):
@@ -204,46 +209,48 @@ with right:
         all_skills.extend(json.loads(item.skills_json or "[]"))
     unique_skills = len({skill.strip().lower() for skill in all_skills if isinstance(skill, str) and skill.strip()})
     progress_value = min(100, max(0, 20 + created_count * 10))
+    
     st.markdown(
         f"<div class='card'><div class='section-title'><span class='title-icon'>{PROGRESS_ICON}</span>Parsing Progress</div>",
         unsafe_allow_html=True,
     )
-    st.markdown(f"<div class='progress-label'><span>Database Sync</span><span>{progress_value}%</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='progress-label'><span>Candidate Database Progress</span><span>{progress_value}%</span></div>", unsafe_allow_html=True)
     st.progress(progress_value)
     m1, m2, m3 = st.columns(3)
     with m1:
         st.markdown(f"<div class='mini-metric'>Resumes Processed<b>{created_count}</b></div>", unsafe_allow_html=True)
     with m2:
-        st.markdown(f"<div class='mini-metric'>Extraction Accuracy<b>{accuracy if accuracy is not None else 0}%</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='mini-metric'>Unique Skills<b>{unique_skills}</b></div>", unsafe_allow_html=True)
     with m3:
-        latest_source = profiles[0].source_file if profiles else "None"
-        st.markdown(f"<div class='mini-metric'>Latest Source<b>{latest_source}</b></div>", unsafe_allow_html=True)
+        latest_source = _safe(profiles[0].source_file if profiles else "None")
+        safe_latest_source = html.escape(latest_source)
+        st.markdown(
+            f"<div class='mini-metric source-metric'>Latest Source<b title='{safe_latest_source}'>{safe_latest_source}</b></div>",
+            unsafe_allow_html=True,
+        )
+
 
     st.markdown("<h4>Extracted Information</h4>", unsafe_allow_html=True)
     if profile:
         contact = profile.get("contact_info", {})
         
-        # Format links as clickable if available
-        linkedin_display = f"<a href='{contact.get('linkedin')}' target='_blank'>{contact.get('linkedin')}</a>" if contact.get('linkedin') else '—'
-        github_display = f"<a href='{contact.get('github')}' target='_blank'>{contact.get('github')}</a>" if contact.get('github') else '—'
-        portfolio_display = f"<a href='{contact.get('portfolio')}' target='_blank'>{contact.get('portfolio')}</a>" if contact.get('portfolio') else '—'
-        
         st.markdown(
             f"""
             <div class="profile-grid">
-              <div><b>Name:</b> {profile.get('full_name') or 'Not detected'}</div>
-              <div><b>Email:</b> {contact.get('email') or '—'}</div>
-              <div><b>Phone:</b> {contact.get('phone') or '—'}</div>
-              <div><b>LinkedIn:</b> {linkedin_display}</div>
-              <div><b>GitHub:</b> {github_display}</div>
-              <div><b>Portfolio:</b> {portfolio_display}</div>
+              <div><b>Name:</b> {_safe(profile.get('full_name'), 'Not detected')}</div>
+              <div><b>Email:</b> {_safe(contact.get('email'))}</div>
+              <div><b>Phone:</b> {_safe(contact.get('phone'))}</div>
+              <div><b>LinkedIn:</b> {_safe_link(contact.get('linkedin'))}</div>
+              <div><b>GitHub:</b> {_safe_link(contact.get('github'))}</div>
+              <div><b>Portfolio:</b> {_safe_link(contact.get('portfolio'))}</div>
               <div><b>Education:</b> {len(profile.get('education', []))} item(s)</div>
               <div><b>Experience:</b> {len(profile.get('work_experience', []))} role(s)</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        st.markdown("<b>Skills:</b><br>" + "".join(f"<span class='skill-chip'>{skill}</span>" for skill in profile.get("skills", [])[:12]), unsafe_allow_html=True)
+        skills_html = "".join(f"<span class='skill-chip'>{_safe(skill)}</span>" for skill in profile.get("skills", [])[:12])
+        st.markdown("<b>Skills:</b><br>" + (skills_html or "<span class='skill-chip'>No skills detected</span>"), unsafe_allow_html=True)
         _render_profile_sections(profile)
     else:
         st.info("Upload a PDF or DOCX resume to display parsed information here.")

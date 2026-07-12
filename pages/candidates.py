@@ -1,3 +1,4 @@
+import html
 import json
 
 import streamlit as st
@@ -24,6 +25,7 @@ ICONS = {
     "file": """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>""",
 }
 
+st.markdown("<div class='page-shell'>", unsafe_allow_html=True)
 st.markdown(
     """
     <div class="topbar">
@@ -31,7 +33,7 @@ st.markdown(
         <h1>Processed Candidates</h1>
         <p>Browse the latest parsed resumes and explore the structured candidate profiles saved in the database.</p>
       </div>
-      <div class="badge">Live Profiles</div>
+      <div class="badge">Animated Talent Cards</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -39,6 +41,13 @@ st.markdown(
 
 profiles = list_candidate_profiles()
 
+def _safe(value: object, fallback: str = "—") -> str:
+    text = str(value or "").strip()
+    return html.escape(text) if text else fallback
+
+
+def _safe_url(value: str) -> str:
+    return html.escape(value, quote=True)
 
 def _render_card_details(card: dict) -> None:
     # Dynamically build tabs based on what's available
@@ -148,6 +157,7 @@ def _render_card_details(card: dict) -> None:
 
 if not profiles:
     st.info("No processed candidate profiles yet. Upload a resume from the Resume Upload page to begin.")
+    st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 st.markdown(
@@ -396,7 +406,15 @@ st.markdown(
         }
     }
     
+    .candidate-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.85rem; margin: 0 0 1rem; }
+    .summary-tile { background: rgba(255,255,255,.88); border: 1px solid #e5eaf0; border-radius: 18px; padding: 1rem; box-shadow: 0 12px 28px rgba(20,32,51,.08); animation: fadeInScale .45s ease both; }
+    .summary-tile span { color: #6d7d8e; font-size: .82rem; font-weight: 700; }
+    .summary-tile b { display: block; color: #13304a; font-size: 1.45rem; margin-top: .25rem; }
+    
     /* Responsive Grid */
+    @media (max-width: 900px) {
+        .candidate-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 768px) {
         .candidate-card {
             padding: 1.2rem;
@@ -416,6 +434,7 @@ st.markdown(
             width: 100%;
             justify-content: flex-start;
         }
+        .candidate-summary { grid-template-columns: 1fr; }
     }
     
     /* Stagger animation delay for cards */
@@ -429,6 +448,25 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+total_skills = 0
+total_experience = 0
+total_projects = 0
+for item in profiles:
+    total_skills += len(json.loads(item.skills_json or "[]"))
+    total_experience += len(json.loads(item.work_experience_json or "[]"))
+    total_projects += len(json.loads(item.projects_json or "[]"))
+
+st.markdown(
+    f"""
+    <div class="candidate-summary">
+      <div class="summary-tile"><span>Total Candidates</span><b>{len(profiles)}</b></div>
+      <div class="summary-tile"><span>Skills Parsed</span><b>{total_skills}</b></div>
+      <div class="summary-tile"><span>Roles Found</span><b>{total_experience}</b></div>
+      <div class="summary-tile"><span>Projects Found</span><b>{total_projects}</b></div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 cards = []
 for item in profiles:
@@ -439,19 +477,19 @@ for item in profiles:
     
     cards.append(
         {
-            "name": item.full_name or "Unnamed Candidate",
-            "email": item.email or "",
-            "phone": item.phone or "",
-            "linkedin": getattr(item, 'linkedin', None) or "",
-            "github": getattr(item, 'github', None) or "",
-            "portfolio": getattr(item, 'portfolio', None) or "",
-            "skills": skills[:8],
+            "name": _safe(item.full_name, "Unnamed Candidate"),
+            "email": _safe(item.email, ""),
+            "phone": _safe(item.phone, ""),
+            "linkedin": _safe_url(getattr(item, 'linkedin', None) or ""),
+            "github": _safe_url(getattr(item, 'github', None) or ""),
+            "portfolio": _safe_url(getattr(item, 'portfolio', None) or ""),
+            "skills": [_safe(skill) for skill in skills[:8]],
             "experience": experience,
             "education": education,
             "certifications": json.loads(item.certifications_json or "[]"),
             "projects": json.loads(item.projects_json or "[]"),
             "additional_sections": additional_sections,
-            "source_file": item.source_file or "—",
+            "source_file": _safe(item.source_file),
             "created_at": item.created_at.strftime("%b %d, %Y") if item.created_at else "—",
         }
     )
@@ -490,9 +528,9 @@ for index, card in enumerate(cards):
             '''
         
         # Get current role and education
-        current_role = card['experience'][0].get('title', 'Not specified') if card['experience'] else 'Not specified'
-        current_company = card['experience'][0].get('company', '') if card['experience'] else ''
-        education_degree = card['education'][0].get('degree', 'Not specified') if card['education'] else 'Not specified'
+        current_role = _safe(card['experience'][0].get('title'), 'Not specified') if card['experience'] else 'Not specified'
+        current_company = _safe(card['experience'][0].get('company'), '') if card['experience'] else ''
+        education_degree = _safe(card['education'][0].get('degree'), 'Not specified') if card['education'] else 'Not specified'
         
         st.markdown(
             f"""
@@ -551,3 +589,5 @@ for index, card in enumerate(cards):
         
         # Show detailed information in tabs
         _render_card_details(card)
+        
+st.markdown("</div>", unsafe_allow_html=True)       
