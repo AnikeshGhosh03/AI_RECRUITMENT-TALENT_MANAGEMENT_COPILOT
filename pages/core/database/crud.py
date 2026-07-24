@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from sqlalchemy import text
 from pages.core.database import db as db_module
-from pages.core.database.models import CandidateProfileModel
+from pages.core.database.models import CandidateProfileModel, JobDescriptionModel
 from pages.core.schemas.candidate_schema import CandidateProfile
 
 
@@ -168,3 +168,89 @@ def delete_all_candidate_profiles() -> int:
             return count
     finally:
         db_module.engine.dispose()
+
+
+def create_job_description(payload: Dict[str, Any]) -> JobDescriptionModel:
+    """Store a job description entered through the recruitment workspace."""
+    fields = {
+        "job_title", "company_name", "department", "source_file", "job_description",
+        "required_skills", "required_experience", "experience_type", "education_required",
+        "job_type", "work_mode", "location", "salary_min", "salary_max", "qualifications", "created_by",
+    }
+    values = {key: value for key, value in payload.items() if key in fields and value not in ("", None)}
+    with db_module.SessionLocal() as session:
+        job = JobDescriptionModel(**values)
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        session.expunge(job)
+        return job
+
+
+def list_job_descriptions() -> List[JobDescriptionModel]:
+    with db_module.SessionLocal() as session:
+        jobs = session.query(JobDescriptionModel).order_by(JobDescriptionModel.created_at.desc()).all()
+        for job in jobs:
+            session.expunge(job)
+        return jobs
+
+
+def get_job_description(job_id: int) -> JobDescriptionModel | None:
+    with db_module.SessionLocal() as session:
+        job = session.query(JobDescriptionModel).filter(JobDescriptionModel.job_id == job_id).first()
+        if job:
+            session.expunge(job)
+        return job
+
+
+def update_job_description(job_id: int, payload: Dict[str, Any]) -> JobDescriptionModel | None:
+    """Update an existing job posting using the supported schema fields."""
+    fields = {
+        "job_title", "company_name", "department", "source_file", "job_description",
+        "required_skills", "required_experience", "experience_type", "education_required",
+        "job_type", "work_mode", "location", "salary_min", "salary_max", "qualifications", "created_by",
+    }
+    with db_module.SessionLocal() as session:
+        job = session.query(JobDescriptionModel).filter(JobDescriptionModel.job_id == job_id).first()
+        if job is None:
+            return None
+        for field, value in payload.items():
+            if field in fields:
+                setattr(job, field, value)
+        session.commit()
+        session.refresh(job)
+        session.expunge(job)
+        return job
+
+
+def delete_job_description(job_id: int) -> bool:
+    """Delete one job posting by its identifier."""
+    with db_module.SessionLocal() as session:
+        job = session.query(JobDescriptionModel).filter(JobDescriptionModel.job_id == job_id).first()
+        if job is None:
+            return False
+        session.delete(job)
+        session.commit()
+        return True
+
+
+def replace_job_description(job_id: int, payload: Dict[str, Any]) -> JobDescriptionModel | None:
+    """Create a fresh job posting from payload and remove the previous posting."""
+    fields = {
+        "job_title", "company_name", "department", "source_file", "job_description",
+        "required_skills", "required_experience", "experience_type", "education_required",
+        "job_type", "work_mode", "location", "salary_min", "salary_max", "qualifications", "created_by",
+    }
+    values = {key: value for key, value in payload.items() if key in fields and value not in ("", None)}
+    with db_module.SessionLocal() as session:
+        previous = session.query(JobDescriptionModel).filter(JobDescriptionModel.job_id == job_id).first()
+        if previous is None:
+            return None
+        replacement = JobDescriptionModel(**values)
+        session.add(replacement)
+        session.flush()
+        session.delete(previous)
+        session.commit()
+        session.refresh(replacement)
+        session.expunge(replacement)
+        return replacement

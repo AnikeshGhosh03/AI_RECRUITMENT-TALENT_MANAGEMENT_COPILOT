@@ -40,6 +40,9 @@ st.markdown(
 )
 
 profiles = list_candidate_profiles()
+selected_candidate_id = str(st.session_state.get("selected_candidate_id") or st.query_params.get("candidate_id", ""))
+if selected_candidate_id:
+    profiles.sort(key=lambda profile: 0 if str(profile.id) == selected_candidate_id else 1)
 
 def _safe(value: object, fallback: str = "—") -> str:
     text = str(value or "").strip()
@@ -192,6 +195,22 @@ st.markdown(
         transform: translateY(-8px) scale(1.01);
         box-shadow: 0 20px 50px rgba(19, 115, 209, 0.18);
         border-color: #1373d1;
+    }
+
+    .candidate-card.selected-candidate {
+        border: 2px solid #754ffe;
+        box-shadow: 0 20px 50px rgba(117, 79, 254, 0.20);
+    }
+
+    .selected-label {
+        display: inline-block;
+        margin: 0.25rem 0;
+        padding: 0.2rem 0.52rem;
+        border-radius: 999px;
+        color: #5b21b6;
+        font-size: 0.72rem;
+        font-weight: 800;
+        background: #ede9fe;
     }
     
     .candidate-card:hover::before {
@@ -477,6 +496,8 @@ for item in profiles:
     
     cards.append(
         {
+            "id": item.id,
+            "selected": str(item.id) == selected_candidate_id,
             "name": _safe(item.full_name, "Unnamed Candidate"),
             "email": _safe(item.email, ""),
             "phone": _safe(item.phone, ""),
@@ -534,7 +555,7 @@ for index, card in enumerate(cards):
         
         st.markdown(
             f"""
-            <div class="candidate-card">
+            <div class="candidate-card{' selected-candidate' if card['selected'] else ''}">
               <div class="candidate-header">
                 <div class="candidate-avatar">{initials}</div>
                 <div style="flex: 1;">

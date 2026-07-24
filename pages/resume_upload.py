@@ -257,7 +257,13 @@ with right:
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    f"<div class='card'><div class='section-title'><span class='title-icon'>{USERS_ICON}</span>Recently Processed Candidates</div>",
+    f"""<div class='card recent-candidates-card'>
+      <div class='recent-header'>
+        <div class='section-title'><span class='title-icon'>{USERS_ICON}</span>Recently Processed Candidates</div>
+        <span class='recent-count'>{len(profiles)} saved</span>
+      </div>
+      <p class='recent-subtitle'>Your latest parsed resumes, ready for job matching and profile review.</p>
+    """,
     unsafe_allow_html=True,
 )
 if profiles:
@@ -273,7 +279,31 @@ if profiles:
                 "Status": "Processed",
             }
         )
-    st.dataframe(rows, width="stretch", hide_index=True)
+    for item in profiles[:5]:
+        skills = json.loads(item.skills_json or "[]")
+        visible_skills = skills[:4]
+        skills_html = "".join(f"<span class='recent-skill'>{_safe(skill)}</span>" for skill in visible_skills)
+        extra_count = len(skills) - len(visible_skills)
+        if extra_count > 0:
+            skills_html += f"<span class='recent-skill more-skills'>+{extra_count}</span>"
+        initials = "".join(part[0].upper() for part in (item.full_name or "Candidate").split()[:2])
+        st.markdown(
+            f"""<div class='recent-candidate-row'>
+              <div class='recent-avatar'>{html.escape(initials or 'C')}</div>
+              <div class='recent-primary'><b>{_safe(item.full_name, 'Candidate not detected')}</b><span>{_safe(item.email)}</span></div>
+              <div class='recent-skills'>{skills_html or "<span class='recent-skill'>No skills extracted</span>"}</div>
+              <div class='recent-source'><span>Source file</span><b title='{_safe(item.source_file)}'>{_safe(item.source_file)}</b></div>
+              <div class='recent-status'>Processed</div>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+    if len(profiles) > 5:
+        st.caption(f"Showing 5 of {len(profiles)} processed candidates. Visit Candidates to see every profile.")
 else:
     st.info("No profiles stored yet. Upload a resume to begin.")
-st.markdown("</div></div>", unsafe_allow_html=True)
+st.markdown(
+    """<style>
+    .recent-candidates-card{padding:1.3rem!important}.recent-header{display:flex;align-items:center;justify-content:space-between;gap:1rem}.recent-header .section-title{margin-bottom:0}.recent-count{padding:.34rem .68rem;border-radius:999px;color:#4338ca;font-size:.78rem;font-weight:850;background:#eef2ff}.recent-subtitle{margin:.42rem 0 1.05rem;color:#697586;font-size:.9rem}.recent-candidate-row{display:grid;grid-template-columns:44px minmax(150px,1.15fr) minmax(180px,1.65fr) minmax(130px,1fr) auto;gap:1rem;align-items:center;margin:.6rem 0;padding:.9rem 1rem;border:1px solid #e5eaf3;border-radius:16px;background:linear-gradient(110deg,#fff,#f8fbff);transition:transform 180ms ease,box-shadow 180ms ease}.recent-candidate-row:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(19,115,209,.09)}.recent-avatar{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;color:#fff;font-weight:850;background:linear-gradient(135deg,#1373d1,#754ffe);box-shadow:0 7px 16px rgba(63,96,208,.22)}.recent-primary{min-width:0}.recent-primary b,.recent-primary span,.recent-source b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recent-primary b{color:#1d2a39}.recent-primary span,.recent-source span{margin-top:.16rem;color:#718096;font-size:.79rem}.recent-skills{min-width:0}.recent-skill{display:inline-block;margin:.14rem .2rem .14rem 0;padding:.27rem .52rem;border-radius:999px;color:#1766b8;font-size:.76rem;font-weight:750;background:#eaf3fd}.more-skills{color:#6941c6;background:#f1edff}.recent-source{min-width:0}.recent-source b{margin-top:.12rem;color:#415267;font-size:.82rem}.recent-status{justify-self:end;padding:.32rem .6rem;border-radius:999px;color:#15803d;font-size:.75rem;font-weight:850;background:#dcfce7}@media(max-width:800px){.recent-candidate-row{grid-template-columns:44px 1fr auto}.recent-skills{grid-column:2 / -1}.recent-source{display:none}}@media(max-width:500px){.recent-header{align-items:flex-start;flex-direction:column}.recent-candidate-row{gap:.65rem;padding:.8rem}.recent-status{font-size:.68rem}}
+    </style></div></div>""",
+    unsafe_allow_html=True,
+)
